@@ -1,0 +1,144 @@
+---
+title: "homework4"
+author: "YangfanCai/yangfanc"
+date: "2/25/2020"
+output: html_document
+---
+
+```{r}
+library(datasets)
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+?ChickWeight
+```
+
+
+#1 Get a frequency breakdown of the number of chicks, their average weight and the standard deviation of the weights in each of the diets at the start of the study. Store the resulting data frame in a variable named weight0 and print
+
+```{r}
+weight <- ChickWeight %>% group_by(Diet) %>%
+  filter(Time == 0) %>%
+  summarize(numChicks = n_distinct(Chick), 
+            AvgWeight = mean(weight, na.rm = TRUE), 
+            SDWeight = sd(weight, na.rm = TRUE))
+weight
+```
+
+
+#2Each chick should have twelve weight measurements. Use the dplyr package to identify how many measurements are there for each chick. Extract a subset of the data for all chicks with complete information, name the data set complete, and print the first 3 rows. (Hint: you might want to use mutate to introduce a helper variable consisting of the number of observations)
+
+
+```{r}
+weight <- ChickWeight
+measurements <- weight %>%
+  group_by(Chick) %>%
+  mutate(NumMeasures = n()) %>%
+  ungroup()
+complete <- measurements%>%
+  filter(NumMeasures==12)
+head(complete, 3)
+
+
+```
+
+
+
+#3. In the complete data set introduce a new variable that measures the current weight difference compared to day 0. Name this variable weightgain and print the first 3 rows of the new data frame.
+
+```{r}
+complete <- complete %>% group_by(Chick) %>%  mutate(dif = (weight - lag(weight, default = weight[1])), weightgain = cumsum(dif)) %>% select(-dif)
+print(head(tbl_df(complete), 3))
+```
+
+
+```{r}
+weightgain <- complete %>%
+              group_by(Chick) %>%
+              mutate(weightgain = c(NA,diff(weight)))
+head(complete)
+weightgain
+weightgain[1:3,]
+```
+
+#4. Use {ggplot2} to create side-by-side boxplots of weightgain by Diet for day 21. Change the order of the categories in the Diet variable such that the boxplots are ordered by median weightgain, and the lower limit of the y axis should be 0. Describe the relationship in 2-3 sentences.
+
+```{r}
+cbox <- complete %>% filter(Time == 21)
+ggplot(cbox, aes(x = reorder(Diet, weightgain, func = median), y = weightgain, color = Diet)) + geom_boxplot() + coord_cartesian(ylim = c(0, 400)) + labs(title = "WeightGainbyDiet", x = "Diet", y = "WeightGain") + theme(plot.title = element_text(hjust = 0.5))
+
+## we are found that the purpe one the different to others because it has short line below the box. the red one has long line above the box.the red, green and purpe midian line in the weightGain are low whan 200.
+```
+
+
+#5. Answer each of the following questions using numerical and graphical summary. Also explain what you found:
+#(a) Which chick gained the most weight and which gained the least weight?
+#(b) What diets were they on?
+```{r}
+complete[order(-complete$weightgain),]
+complete %>%
+  filter(Time == 21) %>%
+  arrange(weightgain)
+complete %>%
+  ggplot(aes(x = Chick, y = weightgain, fill = Diet)) + geom_col()
+## thought all line i can found that:all part is gradually increase
+## in red part: i am found the obviously outlier line in the  chick.11 || this pard all line near 1000 or low than 1000 except number 14 and 7
+## in the purpe part: all data is neear to 1000 and less than 1500
+## in the green part: the first line less than 500, the last line is more than 1500 and it is near to 1750.there are different to other line.
+## in the blue part: only have 2 line less than 1000. the other line is more than 1000. the high line in the last line.
+
+```
+
+
+#6.For the chicks with the least and the most weight at time 0, plot their growth trajectories over time. 
+```{r}
+min <- min(complete$weight)
+max <- max(complete$weight)
+chick <- complete %>%
+    group_by(Chick) %>%
+    filter(Time == 0, weight %in% c(min, max)) %>%
+select(Chick)
+complete %>%
+group_by(Chick) %>%
+    filter(Chick %in% chick$Chick) %>%
+    ggplot(aes(Time, weight, color=Chick)) + 
+               geom_line()
+```
+
+```{r}
+data2 <- dplyr::filter(ChickWeight, Time == 0)
+df <- bind_rows(data2[which.max(data2$weight),],data2[which.min(data2$weight),])
+chickdata <- filter(ChickWeight, Chick == 39 | Chick == 43)
+plot <- ggplot(chickdata, aes(x=Time,y=weight, color=Chick)) + geom_line()
+plot
+```
+
+
+
+#7.Add to the previous plot the average growth trajectory for all chicks (calculated as the mean weight for each chick at each time). How do the trajectories compare?
+
+```{r}
+test <- ChickWeight %>%
+  group_by(Time) %>%
+  summarise(meanweight = mean(weight))
+plot2 <- ggplot(test, aes(x=Time,y=meanweight)) + geom_line()
+plot2
+```
+
+#8.What else do you find interesting in the dataset? Show your exploratory analysis.
+
+
+```{r}
+complete %>%
+  group_by(Chick) %>%
+  mutate(weightgain = (weight - weight[Time == 0]))
+complete %>%
+  group_by(Time) %>%
+  mutate(avgWeight = mean(weightgain))
+a <- ggplot(complete, aes(x=avgWeight)) + geom_density(color="blue", fill="pink")
+a <- a + ggtitle("Average Density Weight Gain Plot") + theme(plot.title = element_text(hjust=0.5))
+
+## we are find a outlier when the weight in 42. when the time up is even the we
+```
+
+
